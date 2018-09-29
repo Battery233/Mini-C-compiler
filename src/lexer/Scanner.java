@@ -28,7 +28,7 @@ public class Scanner {
 
     public char peek() throws IOException {
         if (peeked != -1)
-            return (char)peeked;
+            return (char) peeked;
 
         int r = input.read();
         if (r == -1)
@@ -53,7 +53,7 @@ public class Scanner {
 
         if (r == '\n' || r == '\r') {
             line++;
-            column =0;
+            column = 1;
         } else {
             column++;
         }
@@ -63,7 +63,6 @@ public class Scanner {
     public void close() throws IOException {
         input.close();
     }
-
 
 
 }
