@@ -83,7 +83,7 @@ public class Token {
         this(type, "", lineNum, colNum);
     }
 
-    public Token (TokenClass tokenClass, String data, int lineNum, int colNum) {
+    public Token(TokenClass tokenClass, String data, int lineNum, int colNum) {
         assert (tokenClass != null);
         this.tokenClass = tokenClass;
         this.data = data;
@@ -91,13 +91,12 @@ public class Token {
     }
 
 
-
     @Override
     public String toString() {
         if (data.equals(""))
             return tokenClass.toString();
         else
-            return tokenClass.toString()+"("+data+")";
+            return tokenClass.toString() + "(" + data + ")";
     }
 
 }

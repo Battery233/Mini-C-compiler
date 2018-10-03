@@ -21,7 +21,6 @@ public class Parser {
     private final Tokeniser tokeniser;
 
 
-
     public Parser(Tokeniser tokeniser) {
         this.tokeniser = tokeniser;
     }
@@ -54,7 +53,7 @@ public class Parser {
             sb.append(e);
             sep = "|";
         }
-        System.out.println("Parsing error: expected ("+sb+") found ("+token+") at "+token.position);
+        System.out.println("Parsing error: expected (" + sb + ") found (" + token + ") at " + token.position);
 
         error++;
         lastErrorToken = token;
@@ -70,7 +69,7 @@ public class Parser {
             buffer.add(tokeniser.nextToken());
         assert buffer.size() >= i;
 
-        int cnt=1;
+        int cnt = 1;
         for (Token t : buffer) {
             if (cnt == i)
                 return t;
@@ -110,8 +109,8 @@ public class Parser {
     }
 
     /*
-    * Returns true if the current token is equals to any of the expected ones.
-    */
+     * Returns true if the current token is equals to any of the expected ones.
+     */
     private boolean accept(TokenClass... expected) {
         boolean result = false;
         for (TokenClass e : expected)
@@ -123,8 +122,8 @@ public class Parser {
     private void parseProgram() {
         parseIncludes();
         parseStructDecls();
-        parseVarDecls();
-        parseFunDecls();
+        parseVarDecls(false);
+        parseFunDecls(false);
         expect(TokenClass.EOF);
     }
 
@@ -138,16 +137,222 @@ public class Parser {
     }
 
     private void parseStructDecls() {
-        // to be completed ...
+        if (accept(TokenClass.STRUCT) && lookAhead(2).tokenClass == TokenClass.LBRA) {
+            parseStructType();
+            expect(TokenClass.LBRA);
+            parseVarDecls(true);
+            expect(TokenClass.RBRA);
+            expect(TokenClass.SC);
+            parseStructDecls();
+        }
     }
 
-    private void parseVarDecls() {
-        // to be completed ...
+    private void parseVarDecls(boolean noneZero) {
+        if (noneZero) {
+            parseType();
+            expect(TokenClass.IDENTIFIER);
+            if (accept(TokenClass.LSBR)) {
+                nextToken();
+                expect(TokenClass.INT_LITERAL);
+                expect(TokenClass.RSBR);
+            }
+            expect(TokenClass.SC);
+        } else if (acceptTypeNotPointerNotStruct()) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass == TokenClass.SC || lookAhead(2).tokenClass == TokenClass.LSBR)
+                    parseVarDecls(true);
+        } else if (acceptTypeNotPointerStruct() || acceptPointerTypeNotStruct()) {
+            if (lookAhead(2).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(3).tokenClass == TokenClass.SC || lookAhead(3).tokenClass == TokenClass.LSBR)
+                    parseVarDecls(true);
+        } else if (acceptPointerTypeStruct()) {
+            if (lookAhead(3).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(4).tokenClass == TokenClass.SC || lookAhead(4).tokenClass == TokenClass.LSBR)
+                    parseVarDecls(true);
+        }
     }
 
-    private void parseFunDecls() {
-        // to be completed ...
+    private void parseFunDecls(boolean noneZero) {
+        if (noneZero) {
+            parseType();
+            expect(TokenClass.IDENTIFIER);
+            expect(TokenClass.LPAR);
+            parseParams();
+            expect(TokenClass.RPAR);
+            parseBlock();
+        } else if (acceptTypeNotPointerNotStruct()) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass == TokenClass.LPAR)
+                    parseFunDecls(true);
+        } else if (acceptTypeNotPointerStruct() || acceptPointerTypeNotStruct()) {
+            if (lookAhead(2).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(3).tokenClass == TokenClass.LPAR)
+                    parseFunDecls(true);
+        } else if (acceptPointerTypeStruct()) {
+            if (lookAhead(3).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(4).tokenClass == TokenClass.LPAR)
+                    parseFunDecls(true);
+        }
     }
 
-    // to be completed ...
+    private void parseType() {
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
+            nextToken();
+        } else {
+            parseStructType();
+        }
+
+        if (accept(TokenClass.ASTERIX))
+            nextToken();
+    }
+
+    private void parseStructType() {
+        expect(TokenClass.STRUCT);
+        expect(TokenClass.IDENTIFIER);
+    }
+
+    private void parseParams() {
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID, TokenClass.STRUCT)) {
+            parseType();
+            expect(TokenClass.IDENTIFIER);
+            while (true) {
+                if (accept(TokenClass.COMMA)) {
+                    nextToken();
+                    parseType();
+                    expect(TokenClass.IDENTIFIER);
+                } else
+                    break;
+            }
+        }
+    }
+
+    private void parseStmt(boolean noneZero) {
+        if (noneZero) {
+            if (accept(TokenClass.LBRA)) {
+                parseBlock();
+            } else if (accept(TokenClass.WHILE)) {
+                nextToken();
+                expect(TokenClass.LPAR);
+                parseExp();
+                expect(TokenClass.RPAR);
+                parseStmt(true);
+            } else if (accept(TokenClass.IF)) {
+                nextToken();
+                expect(TokenClass.LPAR);
+                parseExp();
+                expect(TokenClass.RPAR);
+                parseStmt(true);
+                if (accept(TokenClass.ELSE)) {
+                    nextToken();
+                    parseStmt(true);
+                }
+            } else if (accept(TokenClass.RETURN)) {
+                nextToken();
+                if (!accept(TokenClass.SC))
+                    parseExp();
+            } else {
+                parseExp();
+                if (!accept(TokenClass.SC)) {
+                    expect(TokenClass.EQ);
+                    parseExp();
+                }
+                expect(TokenClass.SC);
+            }
+        } else {
+            if (accept(TokenClass.LBRA, TokenClass.WHILE, TokenClass.IF, TokenClass.RETURN,
+                    TokenClass.LPAR, TokenClass.IDENTIFIER, TokenClass.INT_LITERAL, TokenClass.MINUS, TokenClass.CHAR_LITERAL, TokenClass.STRING_LITERAL, TokenClass.ASTERIX, TokenClass.SIZEOF)) {
+                parseStmt(true);
+            }
+        }
+
+    }
+
+    private void parseBlock() {
+        expect(TokenClass.LBRA);
+        parseVarDecls(false);
+        parseStmt(false);
+        expect(TokenClass.RBRA);
+    }
+
+    private void parseExp() {
+        //TODO
+    }
+
+    private void parseFuncall() {
+        expect(TokenClass.IDENTIFIER);
+        expect(TokenClass.LPAR);
+        if (accept(TokenClass.RPAR)) {
+            nextToken();
+        } else {
+            while (true) {
+                parseExp();
+                if (!accept(TokenClass.COMMA))
+                    break;
+                else
+                    nextToken();
+            }
+            expect(TokenClass.RPAR);
+        }
+    }
+
+    private void parseValueat() {
+        expect(TokenClass.ASTERIX);
+        parseExp();
+    }
+
+    private void parseSizeof() {
+        expect(TokenClass.SIZEOF);
+        expect(TokenClass.LPAR);
+        parseType();
+        expect(TokenClass.RPAR);
+    }
+
+    private void parseTypecast() {
+        expect(TokenClass.LPAR);
+        parseType();
+        expect(TokenClass.RPAR);
+        parseExp();
+    }
+
+    private boolean acceptType() {
+        return acceptTypeNotPointerNotStruct() || acceptPointerTypeNotStruct() || acceptTypeNotPointerStruct() || acceptPointerTypeStruct();
+    }
+
+    private boolean acceptTypeNotPointerNotStruct() {
+        boolean result = false;
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
+            if (lookAhead(1).tokenClass != TokenClass.ASTERIX)
+                result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptTypeNotPointerStruct() {
+        boolean result = false;
+        if (accept(TokenClass.STRUCT)) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass != TokenClass.ASTERIX)
+                    result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptPointerTypeNotStruct() {
+        boolean result = false;
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
+            if (lookAhead(1).tokenClass == TokenClass.ASTERIX)
+                result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptPointerTypeStruct() {
+        boolean result = false;
+        if (accept(TokenClass.STRUCT)) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass == TokenClass.ASTERIX)
+                    result = true;
+        }
+        return result;
+    }
 }

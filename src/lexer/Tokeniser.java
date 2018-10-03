@@ -452,9 +452,9 @@ public class Tokeniser {
             } else {
                 scanner.next();
                 char input;
-                try{
-                input = scanner.next();}
-                catch (EOFException eof){
+                try {
+                    input = scanner.next();
+                } catch (EOFException eof) {
                     error(c, line, column);
                     return new Token(TokenClass.INVALID, line, column);
                 }
