@@ -1,18 +1,20 @@
 #include "stdio.h"
 
+//hello
+
 /*
 * comment
 */
 
 int main(){
 
-    int _a=2;
+    int _a;
+    char b;
+    a = 2;
 
     if(_a==2){
         printf("dalk/v"); // Test
     }
-
-    char a = '\n';
 
     return 100;
 }

@@ -157,6 +157,7 @@ public class Parser {
                 expect(TokenClass.RSBR);
             }
             expect(TokenClass.SC);
+            parseVarDecls(false);
         } else if (acceptTypeNotPointerNotStruct()) {
             if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
                 if (lookAhead(2).tokenClass == TokenClass.SC || lookAhead(2).tokenClass == TokenClass.LSBR)
@@ -180,6 +181,7 @@ public class Parser {
             parseParams();
             expect(TokenClass.RPAR);
             parseBlock();
+            parseFunDecls(false);
         } else if (acceptTypeNotPointerNotStruct()) {
             if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
                 if (lookAhead(2).tokenClass == TokenClass.LPAR)
@@ -248,16 +250,19 @@ public class Parser {
                 }
             } else if (accept(TokenClass.RETURN)) {
                 nextToken();
-                if (!accept(TokenClass.SC))
+                if (accept(TokenClass.LPAR, TokenClass.IDENTIFIER, TokenClass.INT_LITERAL, TokenClass.MINUS, TokenClass.CHAR_LITERAL,
+                        TokenClass.STRING_LITERAL, TokenClass.ASTERIX, TokenClass.SIZEOF))
                     parseExp();
+                expect(TokenClass.SC);
             } else {
                 parseExp();
                 if (!accept(TokenClass.SC)) {
-                    expect(TokenClass.EQ);
+                    expect(TokenClass.ASSIGN);
                     parseExp();
                 }
                 expect(TokenClass.SC);
             }
+            parseStmt(false);
         } else {
             if (accept(TokenClass.LBRA, TokenClass.WHILE, TokenClass.IF, TokenClass.RETURN,
                     TokenClass.LPAR, TokenClass.IDENTIFIER, TokenClass.INT_LITERAL, TokenClass.MINUS, TokenClass.CHAR_LITERAL, TokenClass.STRING_LITERAL, TokenClass.ASTERIX, TokenClass.SIZEOF)) {
@@ -275,7 +280,63 @@ public class Parser {
     }
 
     private void parseExp() {
-        //TODO
+        if (accept(TokenClass.LPAR)) {
+            if (lookAhead(1).tokenClass == TokenClass.CHAR || lookAhead(1).tokenClass == TokenClass.INT
+                    || lookAhead(1).tokenClass == TokenClass.VOID || lookAhead(1).tokenClass == TokenClass.STRUCT) {
+                parseTypecast();
+                parseExp_();
+            } else {
+                nextToken();
+                parseExp();
+                expect(TokenClass.RPAR);
+                parseExp_();
+            }
+        } else if (accept(TokenClass.IDENTIFIER)) {
+            if (lookAhead(1).tokenClass == TokenClass.LPAR) {
+                parseFuncall();
+                parseExp_();
+            } else {
+                nextToken();
+                parseExp_();
+            }
+        } else if (accept(TokenClass.INT_LITERAL)) {
+            nextToken();
+            parseExp_();
+        } else if (accept(TokenClass.MINUS)) {
+            nextToken();
+            parseExp();
+            parseExp_();
+        } else if (accept(TokenClass.CHAR_LITERAL)) {
+            nextToken();
+            parseExp_();
+        } else if (accept(TokenClass.STRING_LITERAL)) {
+            nextToken();
+            parseExp_();
+        } else if (accept(TokenClass.ASTERIX)) {
+            parseValueat();
+            parseExp_();
+        } else if (accept(TokenClass.SIZEOF)) {
+            parseSizeof();
+            parseExp_();
+        }
+    }
+
+    private void parseExp_() {
+        if (accept(TokenClass.GT, TokenClass.GE, TokenClass.LT, TokenClass.LE, TokenClass.EQ, TokenClass.NE,
+                TokenClass.PLUS, TokenClass.MINUS, TokenClass.ASTERIX, TokenClass.DIV, TokenClass.REM, TokenClass.AND, TokenClass.OR)) {
+            nextToken();
+            parseExp();
+            parseExp_();
+        } else if (accept(TokenClass.LSBR)) {
+            nextToken();
+            parseExp();
+            expect(TokenClass.RSBR);
+            parseExp_();
+        } else if (accept(TokenClass.DOT)) {
+            nextToken();
+            expect(TokenClass.IDENTIFIER);
+            parseExp_();
+        }
     }
 
     private void parseFuncall() {
@@ -312,10 +373,6 @@ public class Parser {
         parseType();
         expect(TokenClass.RPAR);
         parseExp();
-    }
-
-    private boolean acceptType() {
-        return acceptTypeNotPointerNotStruct() || acceptPointerTypeNotStruct() || acceptTypeNotPointerStruct() || acceptPointerTypeStruct();
     }
 
     private boolean acceptTypeNotPointerNotStruct() {
