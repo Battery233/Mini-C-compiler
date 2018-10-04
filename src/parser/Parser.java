@@ -318,6 +318,8 @@ public class Parser {
         } else if (accept(TokenClass.SIZEOF)) {
             parseSizeof();
             parseExp_();
+        } else {
+            error();
         }
     }
 
