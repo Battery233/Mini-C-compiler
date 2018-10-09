@@ -20,6 +20,7 @@ char h(int i){
     char j;
     j = 'j';
     j == i;
+    i = ----1;
     return j;
 }
 
