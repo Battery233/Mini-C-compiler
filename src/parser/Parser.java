@@ -1,10 +1,13 @@
 package parser;
 
+import ast.*;
+
 import lexer.Token;
 import lexer.Tokeniser;
 import lexer.Token.TokenClass;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 
@@ -25,11 +28,11 @@ public class Parser {
         this.tokeniser = tokeniser;
     }
 
-    public void parse() {
+    public Program parse() {
         // get the first token
         nextToken();
 
-        parseProgram();
+        return parseProgram();
     }
 
     public int getErrorCount() {
@@ -119,12 +122,13 @@ public class Parser {
     }
 
 
-    private void parseProgram() {
+    private Program parseProgram() {
         parseIncludes();
-        parseStructDecls();
-        parseVarDecls(false);
-        parseFunDecls(false);
+        List<StructTypeDecl> stds = parseStructDecls();
+        List<VarDecl> vds = parseVarDecls(false);
+        List<FunDecl> fds = parseFunDecls(false);
         expect(TokenClass.EOF);
+        return new Program(stds, vds, fds);
     }
 
     // includes are ignored, so does not need to return an AST node
@@ -136,7 +140,7 @@ public class Parser {
         }
     }
 
-    private void parseStructDecls() {
+    private List<StructTypeDecl> parseStructDecls() {
         if (accept(TokenClass.STRUCT) && lookAhead(2).tokenClass == TokenClass.LBRA) {
             parseStructType();
             expect(TokenClass.LBRA);
@@ -147,7 +151,7 @@ public class Parser {
         }
     }
 
-    private void parseVarDecls(boolean noneZero) {
+    private List<VarDecl> parseVarDecls(boolean noneZero) {
         if (noneZero) {
             parseType();
             expect(TokenClass.IDENTIFIER);
@@ -173,7 +177,7 @@ public class Parser {
         }
     }
 
-    private void parseFunDecls(boolean noneZero) {
+    private List<FunDecl> parseFunDecls(boolean noneZero) {
         if (noneZero) {
             parseType();
             expect(TokenClass.IDENTIFIER);
