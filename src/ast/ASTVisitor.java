@@ -9,7 +9,7 @@ public interface ASTVisitor<T> {
 
     public T visitArrayType(ArrayType at);
 
-    public T visitStructTypeDecl(StructTypeDecl st);
+    public T visitStructTypeDecl(StructTypeDecl std);
 
     public T visitBlock(Block b);
 
