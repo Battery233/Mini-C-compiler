@@ -31,23 +31,6 @@ stmt       ::= block
 
 block      ::= "{" (vardecl)* (stmt)* "}"
 
-exp::lv7 (|| lv7)*
-lv7 :: lv6(&& lv6)*
-lv6 :: lv5 ( == != lv5)*
-lv5 :: lv4 (< <= > >= lv4)*
-lv4 :: lv3 ( +- lv3 )*
-lv3::lv2 (  * / % lv2  )*
-
-lv2:: ((type)|-|*)* lv1
-        sizeof
-
-lv1::  factor ("["  + factor +"]" )*
-        ( factor . )* IDENT
-      (lv1)
-
-factor:: IDENT|INT_LITERAL|CHAR_LITERAL|STRING_LITERAL|funcall
-
-Exp:{
 exp        ::= "(" exp ")"
              | (IDENT | INT_LITERAL)
              | "-" exp
@@ -62,4 +45,5 @@ fieldaccess  ::= exp "." IDENT                    # structure field member acces
 valueat      ::= "*" exp                          # Value at operator (pointer indirection)
 sizeof       ::= "sizeof" "(" type ")"            # size of type
 typecast     ::= "(" type ")" exp                 # type casting
-}
+
+

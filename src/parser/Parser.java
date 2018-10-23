@@ -284,6 +284,166 @@ public class Parser {
     }
 
     private void parseExp() {
+        parseLv7();
+        while (true) {
+            if (accept(TokenClass.OR)) {
+                nextToken();
+                parseLv7();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv7() {
+        parseLv6();
+        while (true) {
+            if (accept(TokenClass.AND)) {
+                nextToken();
+                parseLv6();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv6() {
+        parseLv5();
+        while (true) {
+            if (accept(TokenClass.EQ, TokenClass.NE)) {
+                nextToken();
+                parseLv5();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv5() {
+        parseLv4();
+        while (true) {
+            if (accept(TokenClass.LT, TokenClass.GT, TokenClass.LE, TokenClass.GE)) {
+                nextToken();
+                parseLv4();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv4() {
+        parseLv3();
+        while (true) {
+            if (accept(TokenClass.PLUS, TokenClass.MINUS)) {
+                nextToken();
+                parseLv3();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv3() {
+        parseLv2();
+        while (true) {
+            if (accept(TokenClass.ASTERIX, TokenClass.DIV, TokenClass.REM)) {
+                nextToken();
+                parseLv2();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseLv2() {
+        if (accept(TokenClass.SIZEOF)) {
+            parseSizeof();
+        } else {
+            while (true) {
+                if (accept(TokenClass.ASTERIX, TokenClass.MINUS)) {
+                    nextToken();
+                } else if (accept(TokenClass.LPAR)
+                        && (lookAhead(1).tokenClass == TokenClass.STRUCT ||
+                        lookAhead(1).tokenClass == TokenClass.INT ||
+                        lookAhead(1).tokenClass == TokenClass.CHAR ||
+                        lookAhead(1).tokenClass == TokenClass.VOID)) {
+                    nextToken();
+                    parseType();
+                    nextToken();
+                } else {
+                    break;
+                }
+            }
+            parseLv1();
+        }
+    }
+
+    private void parseLv1() {
+        if (accept(TokenClass.LPAR)) {
+            nextToken();
+            parseLv1();
+            expect(TokenClass.RPAR);
+        } else {
+            parseFactor();
+            if (accept(TokenClass.DOT)) {
+                nextToken();
+                int flag = 0;
+                while (true) {
+                    if (accept(TokenClass.LSBR)) {
+                        nextToken();
+                        parseFactor();
+                        expect(TokenClass.RSBR);
+                    } else if (isFactor(0)) {
+                        parseFactor();
+                        expect(TokenClass.DOT);
+                        flag = 1;
+                    } else {
+                        break;
+                    }
+                }
+                if (flag == 1)
+                    expect(TokenClass.IDENTIFIER);
+            }
+        }
+    }
+
+    private void parseFactor() {
+        if (accept(TokenClass.INT_LITERAL)) {
+            nextToken();
+        } else if (accept(TokenClass.STRING_LITERAL)) {
+            nextToken();
+        } else if (accept(TokenClass.CHAR_LITERAL)) {
+            nextToken();
+        } else {
+            if (accept(TokenClass.IDENTIFIER)) {
+                if (lookAhead(1).tokenClass == TokenClass.LPAR) {
+                    parseFuncall();
+                } else {
+                    nextToken();
+                }
+            } else {
+                error();
+            }
+        }
+    }
+
+    private boolean isFactor(int i) {
+        if (i == 0) {
+            return accept(TokenClass.INT_LITERAL, TokenClass.IDENTIFIER, TokenClass.CHAR_LITERAL, TokenClass.STRING_LITERAL);
+        } else {
+            if (lookAhead(i).tokenClass == TokenClass.INT_LITERAL
+                    || lookAhead(i).tokenClass == TokenClass.IDENTIFIER
+                    || lookAhead(i).tokenClass == TokenClass.CHAR_LITERAL
+                    || lookAhead(i).tokenClass == TokenClass.STRING_LITERAL
+            ) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /*
+    private void parseExp() {
         if (accept(TokenClass.LPAR)) {
             if (lookAhead(1).tokenClass == TokenClass.CHAR || lookAhead(1).tokenClass == TokenClass.INT
                     || lookAhead(1).tokenClass == TokenClass.VOID || lookAhead(1).tokenClass == TokenClass.STRUCT) {
@@ -343,7 +503,7 @@ public class Parser {
             expect(TokenClass.IDENTIFIER);
             parseExp_();
         }
-    }
+    }*/
 
     private void parseFuncall() {
         expect(TokenClass.IDENTIFIER);
