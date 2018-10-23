@@ -384,25 +384,20 @@ public class Parser {
             parseExp();
             expect(TokenClass.RPAR);
         } else {
-            parseFactor();
-            if (accept(TokenClass.DOT)) {
-                nextToken();
-                int flag = 0;
-                while (true) {
-                    if (accept(TokenClass.LSBR)) {
-                        nextToken();
-                        parseFactor();
-                        expect(TokenClass.RSBR);
-                    } else if (isFactor(0)) {
-                        parseFactor();
-                        expect(TokenClass.DOT);
-                        flag = 1;
-                    } else {
-                        break;
-                    }
-                }
-                if (flag == 1)
+            if (lookAhead(1).tokenClass == TokenClass.LPAR && accept(TokenClass.IDENTIFIER)) {
+                parseFuncall();
+            } else
+                parseFactor();
+            while (true) {
+                if (accept(TokenClass.LSBR)) {
+                    nextToken();
+                    parseExp();
+                    expect(TokenClass.RSBR);
+                } else if (accept(TokenClass.DOT)) {
+                    nextToken();
                     expect(TokenClass.IDENTIFIER);
+                }else
+                    break;
             }
         }
     }
@@ -416,29 +411,10 @@ public class Parser {
             nextToken();
         } else {
             if (accept(TokenClass.IDENTIFIER)) {
-                if (lookAhead(1).tokenClass == TokenClass.LPAR) {
-                    parseFuncall();
-                } else {
-                    nextToken();
-                }
+                nextToken();
             } else {
                 error();
             }
-        }
-    }
-
-    private boolean isFactor(int i) {
-        if (i == 0) {
-            return accept(TokenClass.INT_LITERAL, TokenClass.IDENTIFIER, TokenClass.CHAR_LITERAL, TokenClass.STRING_LITERAL);
-        } else {
-            if (lookAhead(i).tokenClass == TokenClass.INT_LITERAL
-                    || lookAhead(i).tokenClass == TokenClass.IDENTIFIER
-                    || lookAhead(i).tokenClass == TokenClass.CHAR_LITERAL
-                    || lookAhead(i).tokenClass == TokenClass.STRING_LITERAL
-            ) {
-                return true;
-            }
-            return false;
         }
     }
 

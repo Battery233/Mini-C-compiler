@@ -29,10 +29,24 @@ int main(){
     char* n;
     _m = *n;
     _m = (int)n;
-    if(_m==2){
-        printf("ok"); // OK
-    }else
-        return o != 4;
+    fun()[4+9].f[2].c;
+    c(e)[2];
+//    b.c().i;
+//     a[3].[3].[3];
+//      d[2](e);    if(_m==2){
+              if(a||2&&3||(3+3==2)){
+                }else{
+                a = (int)(char)*m;
+                ***P;
+                        printf("ok"); // OK
+                }
+            printf("ok"); // OK
+        }else{
+            if(a==2){
+            }else{
+            }
+        }
+            return o != 4;
 
     while(true){
         while(2>=3)
