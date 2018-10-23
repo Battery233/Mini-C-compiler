@@ -381,7 +381,7 @@ public class Parser {
     private void parseLv1() {
         if (accept(TokenClass.LPAR)) {
             nextToken();
-            parseLv1();
+            parseExp();
             expect(TokenClass.RPAR);
         } else {
             parseFactor();
