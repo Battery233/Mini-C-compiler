@@ -43,7 +43,7 @@ lv2:: ((type)|-|*)* lv1
 
 lv1::  factor ("["  + factor +"]" )*
         ( factor . )* IDENT
-      (lv1)
+      (exp)
 
 factor:: IDENT|INT_LITERAL|CHAR_LITERAL|STRING_LITERAL|funcall
 
