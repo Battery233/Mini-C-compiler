@@ -1,10 +1,9 @@
 package parser;
 
 import ast.*;
-
 import lexer.Token;
-import lexer.Tokeniser;
 import lexer.Token.TokenClass;
+import lexer.Tokeniser;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -232,7 +231,7 @@ public class Parser {
         }
     }
 
-    private void parseStmt(boolean noneZero) {
+    private List<Stmt> parseStmt(boolean noneZero) {
         if (noneZero) {
             if (accept(TokenClass.LBRA)) {
                 parseBlock();
@@ -273,149 +272,301 @@ public class Parser {
                 parseStmt(true);
             }
         }
-
     }
 
-    private void parseBlock() {
+    private Block parseBlock() {
         expect(TokenClass.LBRA);
-        parseVarDecls(false);
-        parseStmt(false);
+        List<VarDecl> vd = parseVarDecls(false);
+        List<Stmt> ps = parseStmt(false);
         expect(TokenClass.RBRA);
+        return new Block(vd, ps);
     }
 
-    private void parseExp() {
-        parseLv7();
+    private Expr parseExp() {
+        Expr e = parseLv7();
         while (true) {
             if (accept(TokenClass.OR)) {
                 nextToken();
-                parseLv7();
+                e = new BinOp(e, Op.OR, parseLv7());
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv7() {
-        parseLv6();
+    private Expr parseLv7() {
+        Expr e = parseLv6();
         while (true) {
             if (accept(TokenClass.AND)) {
                 nextToken();
-                parseLv6();
+                e = new BinOp(e, Op.AND, parseLv6());
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv6() {
-        parseLv5();
+    private Expr parseLv6() {
+        Expr e = parseLv5(), e2;
+        Op op;
         while (true) {
             if (accept(TokenClass.EQ, TokenClass.NE)) {
+                if (token.tokenClass == TokenClass.EQ) {
+                    op = Op.EQ;
+                } else {
+                    op = Op.NE;
+                }
                 nextToken();
-                parseLv5();
+                e2 = parseLv5();
+                e = new BinOp(e, op, e2);
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv5() {
-        parseLv4();
+    private Expr parseLv5() {
+        Expr e = parseLv4(), e2;
+        Op op;
         while (true) {
             if (accept(TokenClass.LT, TokenClass.GT, TokenClass.LE, TokenClass.GE)) {
+                switch (token.tokenClass) {
+                    case LT:
+                        op = Op.LT;
+                        break;
+                    case GT:
+                        op = Op.GT;
+                        break;
+                    case LE:
+                        op = Op.LE;
+                        break;
+                    case GE:
+                        op = Op.GE;
+                        break;
+                    default:
+                        op = null;
+                        error();
+                }
                 nextToken();
-                parseLv4();
+                e2 = parseLv4();
+                e = new BinOp(e, op, e2);
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv4() {
-        parseLv3();
+    private Expr parseLv4() {
+        Expr e = parseLv3(), e2;
+        Op op;
         while (true) {
             if (accept(TokenClass.PLUS, TokenClass.MINUS)) {
+                if (token.tokenClass == TokenClass.PLUS) {
+                    op = Op.ADD;
+                } else {
+                    op = Op.SUB;
+                }
                 nextToken();
-                parseLv3();
+                e2 = parseLv3();
+                e = new BinOp(e, op, e2);
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv3() {
-        parseLv2();
+    private Expr parseLv3() {
+        Expr e = parseLv2(), e2;
+        Op op;
         while (true) {
             if (accept(TokenClass.ASTERIX, TokenClass.DIV, TokenClass.REM)) {
+                if (token.tokenClass == TokenClass.ASTERIX) {
+                    op = Op.MUL;
+                } else if (token.tokenClass == TokenClass.DIV) {
+                    op = Op.DIV;
+                } else {
+                    op = Op.MOD;
+                }
                 nextToken();
-                parseLv2();
+                e2 = parseLv2();
+                e = new BinOp(e, op, e2);
             } else {
                 break;
             }
         }
+        return e;
     }
 
-    private void parseLv2() {
+    private Expr parseLv2() {
+        Expr e = null;
+        boolean raw = true;
         if (accept(TokenClass.SIZEOF)) {
-            parseSizeof();
+            return parseSizeof();
         } else {
             while (true) {
                 if (accept(TokenClass.ASTERIX, TokenClass.MINUS)) {
+                    raw = false;
+                    boolean flag;
+                    if (token.tokenClass == TokenClass.ASTERIX) {
+                        flag = true;
+                    } else {
+                        flag = false;
+                    }
                     nextToken();
+                    e = parseLv1();
+                    if (flag)
+                        e = new ValueAtExpr(e);
+                    else
+                        e = new BinOp(new IntLiteral(0), Op.SUB, e);
                 } else if (accept(TokenClass.LPAR)
                         && (lookAhead(1).tokenClass == TokenClass.STRUCT ||
                         lookAhead(1).tokenClass == TokenClass.INT ||
                         lookAhead(1).tokenClass == TokenClass.CHAR ||
                         lookAhead(1).tokenClass == TokenClass.VOID)) {
+                    raw = false;
                     nextToken();
-                    parseType();
+                    Type t = parseType();
                     nextToken();
-                } else {
+                    e = parseLv1();
+                    e = new TypecastExpr(t, e);
+                } else
                     break;
-                }
             }
-            parseLv1();
+            if (raw) {
+                e = parseLv1();
+            }
+            return e;
         }
     }
 
-    private void parseLv1() {
+    private Expr parseLv1() {
+        Expr e, follow;
         if (accept(TokenClass.LPAR)) {
             nextToken();
-            parseExp();
+            e = parseExp();
             expect(TokenClass.RPAR);
         } else {
             if (lookAhead(1).tokenClass == TokenClass.LPAR && accept(TokenClass.IDENTIFIER)) {
-                parseFuncall();
+                e = parseFuncall();
             } else
-                parseFactor();
+                e = parseFactor();
             while (true) {
                 if (accept(TokenClass.LSBR)) {
                     nextToken();
-                    parseExp();
+                    follow = parseExp();
+                    e = new ArrayAccessExpr(e, follow);
                     expect(TokenClass.RSBR);
                 } else if (accept(TokenClass.DOT)) {
                     nextToken();
+                    String name = token.data;
                     expect(TokenClass.IDENTIFIER);
-                }else
+                    e = new FieldAccessExpr(e, name);
+                } else
                     break;
             }
         }
+        return e;
     }
 
-    private void parseFactor() {
+    private Expr parseFactor() {
+        Expr e = null;
         if (accept(TokenClass.INT_LITERAL)) {
-            nextToken();
+            e = parseIntLiteral();
         } else if (accept(TokenClass.STRING_LITERAL)) {
+            e = new StrLiteral(token.data);
             nextToken();
         } else if (accept(TokenClass.CHAR_LITERAL)) {
+            e = new ChrLiteral(token.data.charAt(0));
             nextToken();
         } else {
             if (accept(TokenClass.IDENTIFIER)) {
+                e = new VarExpr(token.data);
                 nextToken();
             } else {
                 error();
             }
         }
+        return e;
+    }
+
+    private IntLiteral parseIntLiteral() {
+        Token n = expect(TokenClass.INT_LITERAL);
+        assert n != null;
+        int i = Integer.parseInt(n.data);
+        return new IntLiteral(i);
+    }
+
+    private FunCallExpr parseFuncall() {
+        expect(TokenClass.IDENTIFIER);
+        String id = token.data;
+        expect(TokenClass.LPAR);
+        List<Expr> es = null;
+        Expr e;
+        if (accept(TokenClass.RPAR)) {
+            nextToken();
+        } else {
+            while (true) {
+                e = parseExp();
+                es.add(e);
+                if (!accept(TokenClass.COMMA))
+                    break;
+                else
+                    nextToken();
+            }
+            expect(TokenClass.RPAR);
+        }
+        return new FunCallExpr(id, es);
+    }
+
+    private SizeOfExpr parseSizeof() {
+        expect(TokenClass.SIZEOF);
+        expect(TokenClass.LPAR);
+        Type t = parseType();
+        expect(TokenClass.RPAR);
+        return new SizeOfExpr(t);
+    }
+
+    private boolean acceptTypeNotPointerNotStruct() {
+        boolean result = false;
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
+            if (lookAhead(1).tokenClass != TokenClass.ASTERIX)
+                result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptTypeNotPointerStruct() {
+        boolean result = false;
+        if (accept(TokenClass.STRUCT)) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass != TokenClass.ASTERIX)
+                    result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptPointerTypeNotStruct() {
+        boolean result = false;
+        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
+            if (lookAhead(1).tokenClass == TokenClass.ASTERIX)
+                result = true;
+        }
+        return result;
+    }
+
+    private boolean acceptPointerTypeStruct() {
+        boolean result = false;
+        if (accept(TokenClass.STRUCT)) {
+            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
+                if (lookAhead(2).tokenClass == TokenClass.ASTERIX)
+                    result = true;
+        }
+        return result;
     }
 
     /*
@@ -479,35 +630,11 @@ public class Parser {
             expect(TokenClass.IDENTIFIER);
             parseExp_();
         }
-    }*/
-
-    private void parseFuncall() {
-        expect(TokenClass.IDENTIFIER);
-        expect(TokenClass.LPAR);
-        if (accept(TokenClass.RPAR)) {
-            nextToken();
-        } else {
-            while (true) {
-                parseExp();
-                if (!accept(TokenClass.COMMA))
-                    break;
-                else
-                    nextToken();
-            }
-            expect(TokenClass.RPAR);
-        }
     }
 
-    private void parseValueat() {
+     private void parseValueat() {
         expect(TokenClass.ASTERIX);
         parseExp();
-    }
-
-    private void parseSizeof() {
-        expect(TokenClass.SIZEOF);
-        expect(TokenClass.LPAR);
-        parseType();
-        expect(TokenClass.RPAR);
     }
 
     private void parseTypecast() {
@@ -517,41 +644,5 @@ public class Parser {
         parseExp();
     }
 
-    private boolean acceptTypeNotPointerNotStruct() {
-        boolean result = false;
-        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
-            if (lookAhead(1).tokenClass != TokenClass.ASTERIX)
-                result = true;
-        }
-        return result;
-    }
-
-    private boolean acceptTypeNotPointerStruct() {
-        boolean result = false;
-        if (accept(TokenClass.STRUCT)) {
-            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
-                if (lookAhead(2).tokenClass != TokenClass.ASTERIX)
-                    result = true;
-        }
-        return result;
-    }
-
-    private boolean acceptPointerTypeNotStruct() {
-        boolean result = false;
-        if (accept(TokenClass.INT, TokenClass.CHAR, TokenClass.VOID)) {
-            if (lookAhead(1).tokenClass == TokenClass.ASTERIX)
-                result = true;
-        }
-        return result;
-    }
-
-    private boolean acceptPointerTypeStruct() {
-        boolean result = false;
-        if (accept(TokenClass.STRUCT)) {
-            if (lookAhead(1).tokenClass == TokenClass.IDENTIFIER)
-                if (lookAhead(2).tokenClass == TokenClass.ASTERIX)
-                    result = true;
-        }
-        return result;
-    }
+    */
 }
