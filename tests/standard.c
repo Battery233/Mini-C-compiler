@@ -41,12 +41,8 @@ int main(){
                         printf("ok"); // OK
                 }
             printf("ok"); // OK
-        }else{
-            if(a==2){
-            }else{
-            }
-        }
-            return o != 4;
+             return o != 4;
+
 
     while(true){
         while(2>=3)
@@ -56,6 +52,5 @@ int main(){
      if(_m==2){
         return - _m;
      }
-
-    return sizeof(struct a);
-}
+        return sizeof(struct a);
+      }

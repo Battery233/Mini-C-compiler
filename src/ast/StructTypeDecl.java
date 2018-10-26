@@ -7,7 +7,7 @@ public class StructTypeDecl implements ASTNode {
     public final StructType st;
     public final List<VarDecl> varDecls;
 
-    StructTypeDecl(StructType st, List<VarDecl> varDecls) {
+    public StructTypeDecl(StructType st, List<VarDecl> varDecls) {
         this.st = st;
         this.varDecls = varDecls;
     }
