@@ -68,8 +68,8 @@ public class ASTPrinter implements ASTVisitor<Void> {
     public Void visitFunCallExpr(FunCallExpr fc) {
         writer.print("FunCallExpr(" + fc.s);
         if (fc.Exprs.size() != 0) {
-            writer.print(",");
             for (Expr e : fc.Exprs) {
+                writer.print(",");
                 e.accept(this);
             }
         }
