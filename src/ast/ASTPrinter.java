@@ -19,7 +19,10 @@ public class ASTPrinter implements ASTVisitor<Void> {
             delimiter = ",";
             v.accept(this);
         }
-        delimiter = ",";
+        if (b.Stmt.size() != 0) {
+            writer.print(delimiter);
+        }
+        delimiter = "";
         for (Stmt s : b.Stmt) {
             writer.print(delimiter);
             delimiter = ",";
@@ -148,7 +151,7 @@ public class ASTPrinter implements ASTVisitor<Void> {
 
     @Override
     public Void visitIf(If i) {
-        writer.print("visitIf(");
+        writer.print("If(");
         i.e.accept(this);
         writer.print(",");
         i.s1.accept(this);

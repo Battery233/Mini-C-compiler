@@ -250,9 +250,8 @@ public class Parser {
             t = parseStructType();
         }
         if (accept(TokenClass.ASTERIX)) {
-            String s = token.data;
             nextToken();
-            t = new StructType(s);
+            t = new PointerType(t);
         }
         return t;
     }
