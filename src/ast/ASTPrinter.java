@@ -19,7 +19,7 @@ public class ASTPrinter implements ASTVisitor<Void> {
             delimiter = ",";
             v.accept(this);
         }
-        delimiter = "";
+        delimiter = ",";
         for (Stmt s : b.Stmt) {
             writer.print(delimiter);
             delimiter = ",";
@@ -64,7 +64,7 @@ public class ASTPrinter implements ASTVisitor<Void> {
     @Override
     public Void visitFunCallExpr(FunCallExpr fc) {
         writer.print("FunCallExpr(" + fc.s);
-        if (fc.Exprs != null) {
+        if (fc.Exprs.size() != 0) {
             writer.print(",");
             for (Expr e : fc.Exprs) {
                 e.accept(this);

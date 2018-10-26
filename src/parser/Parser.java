@@ -607,8 +607,8 @@ public class Parser {
     }
 
     private FunCallExpr parseFuncall() {
-        expect(TokenClass.IDENTIFIER);
         String id = token.data;
+        expect(TokenClass.IDENTIFIER);
         expect(TokenClass.LPAR);
         List<Expr> es = new ArrayList<>();
         Expr e;
