@@ -14,7 +14,7 @@ int o;
 int array[9];
 int * pointer;
 
-void f(int g) {
+void fun(int g) {
 
 }
 

@@ -11,7 +11,7 @@ int main() {
     a = 2;
     a = -- --1;
     if (a == 2) {
-        printf("dalk/v"); // Test
+        print_i("dalk/v"); // Test
     }
     return 100;
 }

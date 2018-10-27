@@ -4,7 +4,7 @@ import java.util.List;
 
 public class Block extends Stmt {
 
-    public final List<VarDecl> varDecls;
+    public List<VarDecl> varDecls;
     public final List<Stmt> Stmt;
 
     public Block(List<VarDecl> varDecls, List<Stmt> Stmt) {
