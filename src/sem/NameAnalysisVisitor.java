@@ -192,7 +192,7 @@ public class NameAnalysisVisitor extends BaseSemanticVisitor<Void> {
             }
             try {
                 fc.fd = ((ProcSymbol) s).fd;
-            }catch (ClassCastException e){
+            } catch (ClassCastException e) {
                 e.printStackTrace();
                 error("ClassCastException");
             }
