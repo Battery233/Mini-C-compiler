@@ -84,11 +84,11 @@ public class NameAnalysisVisitor extends BaseSemanticVisitor<Void> {
         params.add(new VarDecl(BaseType.CHAR, "c"));
         scope.put(new ProcSymbol(new FunDecl(BaseType.VOID, "print_c", params, eb)));
 
+        scope.put(new ProcSymbol(new FunDecl(BaseType.CHAR, "read_c", new ArrayList<>(), eb)));
+
+        scope.put(new ProcSymbol(new FunDecl(BaseType.INT, "read_i", new ArrayList<>(), eb)));
+
         params = new ArrayList<>();
-        scope.put(new ProcSymbol(new FunDecl(BaseType.CHAR, "read_c", params, eb)));
-
-        scope.put(new ProcSymbol(new FunDecl(BaseType.INT, "read_i", params, eb)));
-
         params.add(new VarDecl(BaseType.INT, "size"));
         scope.put(new ProcSymbol(new FunDecl(new PointerType(BaseType.VOID), "mcmalloc", params, eb)));
 
