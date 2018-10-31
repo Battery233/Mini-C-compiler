@@ -184,8 +184,15 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
                 return null;
             }
         } else {
+            if (lhsT instanceof PointerType && rhsT instanceof PointerType) {
+                if (((PointerType) lhsT).t != ((PointerType) rhsT).t) {
+                    error("error: pointer not match!");
+                }
+            }
             if (lhsT instanceof StructType || lhsT instanceof ArrayType || lhsT == BaseType.VOID) {
                 error("wrong lhs type in BinOp!");
+            }else if(lhsT!=rhsT){
+                error("left and right not match in OP!");
             }
         }
         bo.type = BaseType.INT;
@@ -294,7 +301,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
         if (i.s2 != null)
             i.s2.accept(this);
         if (t != BaseType.INT)
-            error("While condition should be int!");
+            error("If condition should be int!");
         return null;
     }
 
