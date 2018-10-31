@@ -70,24 +70,30 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
 
     @Override
     public Type visitProgram(Program p) {
-        if (p.structTypeDecls.size() != 0) {
-            for (StructTypeDecl std : p.structTypeDecls) {
-                std.accept(this);
+        try {
+            if (p.structTypeDecls.size() != 0) {
+                for (StructTypeDecl std : p.structTypeDecls) {
+                    std.accept(this);
+                }
             }
-        }
 
-        if (p.varDecls.size() != 0) {
-            for (VarDecl vd : p.varDecls) {
-                vd.accept(this);
+            if (p.varDecls.size() != 0) {
+                for (VarDecl vd : p.varDecls) {
+                    vd.accept(this);
+                }
             }
-        }
 
-        if (p.funDecls.size() != 0) {
-            for (FunDecl fd : p.funDecls) {
-                fd.accept(this);
+            if (p.funDecls.size() != 0) {
+                for (FunDecl fd : p.funDecls) {
+                    fd.accept(this);
+                }
             }
+            return null;
+        } catch (Exception e) {
+            error("Exception found in visitProgram: " + e.toString());
+//            e.printStackTrace();
+            return null;
         }
-        return null;
     }
 
     @Override
