@@ -38,11 +38,11 @@ int main(){
     }
 
     if(*ip1==*ip2){
-        if(3)
-        {
-        if(4)
-            p;
-        }else
+        if(ip1==ip2)
+//        {
+//        if(cp==ip2)
+//            p;
+//        }else
         while(1){
         }
     }
