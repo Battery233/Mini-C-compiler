@@ -24,6 +24,7 @@ int main(){
     i = test(i);
     if(0||3==2 && i>1){
         i = 3;
+        print_i(2);
         }
     else
         if(4!=9+0){
