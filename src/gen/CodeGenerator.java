@@ -24,9 +24,10 @@ public class CodeGenerator implements ASTVisitor<Register> {
     private int stringTag = 0;
     private HashMap<String, Integer> structSize = new HashMap<>();
     private int localValOffset = 0;
-    private boolean AssianAddress = false;
+    private boolean AssignAddress = false;
     private boolean isMain = false;
     private boolean isMainVoid = false;
+    private String currentFun = "global";
 
     public CodeGenerator() {
         freeRegs.addAll(Register.tmpRegs);
@@ -125,6 +126,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             if (p.type == BaseType.VOID)
                 isMainVoid = true;
         }
+        currentFun = p.name;
         writer.println("\n" + p.name + ":");
         writer.println("move  " + Register.fp.toString() + ", " + Register.sp.toString());
 
@@ -143,7 +145,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitStrLiteral(StrLiteral sl) {
         stringTag++;
-        writer.println(".data\n" + "s" + stringTag + ": .asciiz " + sl.s + "\n.text");
+        writer.println(".data\n" + "s" + stringTag + ": .asciiz \"" + sl.s + "\"\n.text");
         Register r = getRegister();
         print("la", r.toString(), "s" + stringTag, null);
         return r;
@@ -152,7 +154,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitChrLiteral(ChrLiteral cl) {
         Register r = getRegister();
-        print("li", r.toString(), "'"+String.valueOf(cl.c)+"'", null);
+        print("li", r.toString(), "'" + String.valueOf(cl.c) + "'", null);
         return r;
     }
 
@@ -288,15 +290,27 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitArrayAccessExpr(ArrayAccessExpr aae) {
         Register r = getRegister();
-        Register r1 = aae.e1.accept(this);
-        Register r2 = aae.e2.accept(this);
-        if (AssianAddress) {
-            //left of assign
-//todo
-        } else {
-
+        Register name = aae.e1.accept(this);
+        Register index = aae.e2.accept(this);
+        int size = 4;
+        if (aae.e1.type == BaseType.CHAR) {
+            size = 1;
         }
-
+        print("li", r.toString(), String.valueOf(size), null);
+        print("mult", r.toString(), index.toString(), null);
+        print("mflo", r.toString(), null, null);
+        print("add", r.toString(), r.toString(), name.toString());
+        if (!AssignAddress) {
+            //load value
+            if (size == 1) {
+                print("lb", r.toString(), "0(" + r.toString() + ")", null);
+            } else {
+                print("lw", r.toString(), "0(" + r.toString() + ")", null);
+            }
+            writer.println("# load the value of array element!");
+        }
+        freeRegister(name);
+        freeRegister(index);
         return r;
     }
 
@@ -394,12 +408,12 @@ public class CodeGenerator implements ASTVisitor<Register> {
             print("sw", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 5");
             freeRegister(address);
         } else if (a.e1 instanceof ArrayAccessExpr) {
-            AssianAddress = true;
+            AssignAddress = true;
             System.out.println("assign an ArrayAccessExpr");
             Register address = a.e1.accept(this);
             print("sw", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 6");
             freeRegister(address);
-            AssianAddress = false;
+            AssignAddress = false;
         } else if (a.e1 instanceof FieldAccessExpr) {
             System.out.println("assign a FieldAccessExpr");
             Register address = a.e1.accept(this);
