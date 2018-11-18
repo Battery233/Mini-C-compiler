@@ -13,17 +13,23 @@ jal main
 main:
 move  $fp, $sp
 ###visit block###
-add $sp, $sp, -4
 ###block vd↑###block stmt↓###
-li $t9, 666
-sw $t9, 4($fp)
-lw $t9, 4($fp)
-# print_i
-li $v0, 1
-add $a0, $zero, $t9
-syscall
-# print_i
-
+li $t9, 'h'
+la $s6,cArray
+li $s6, 0
+sw $t9, ($t8), # visitAssign Tag 6
 li $t9, 0
-add   $v0, $zero, $t9
+li $t8, 1
+sub $s5, $t9, $t8
+add   $v0, $zero, $s5
+move $a0, $v0
+li $v0, 17, 
+syscall
+jr $ra
+li $s5, 0
+add   $v0, $zero, $s5
+move $a0, $v0
+li $v0, 17, 
+syscall
+jr $ra
 ###visit block end###
