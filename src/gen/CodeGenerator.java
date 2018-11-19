@@ -33,6 +33,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
     private boolean isMainVoid = false;
     private String currentFun = "global";
     private int argsOffset = 0;
+    private boolean voidReturn = false;
 
     public CodeGenerator() {
         freeRegs.addAll(Register.tmpRegs);
@@ -46,7 +47,6 @@ public class CodeGenerator implements ASTVisitor<Register> {
             return freeRegs.pop();
         } catch (EmptyStackException ese) {
             throw new RegisterAllocationError(); // no more free registers, bad luck!
-            //todo resister leak;
         }
     }
 
@@ -123,13 +123,21 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitBlock(Block b) {
         localValOffset = 12;
+        boolean addReturn = false;
         writer.println("###visit block###");
         for (VarDecl vd : b.varDecls) {
             vd.accept(this);
         }
         writer.println("###block vd↑###block stmt↓###");
+        if (voidReturn) {
+            voidReturn = false;
+            addReturn = true;
+        }
         for (Stmt st : b.Stmt) {
             st.accept(this);
+        }
+        if (addReturn) {
+            new Return(null).accept(this);
         }
         writer.println("###visit block end###");
         return null;
@@ -143,15 +151,21 @@ public class CodeGenerator implements ASTVisitor<Register> {
                 isMainVoid = true;
         }
         System.out.println("At the beginning of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
-        if(freeRegs.size()!=18){
-            for(Register r:freeRegs){
-                System.out.print(r.toString()+" ");
+        if (freeRegs.size() != 18) {
+            for (Register r : freeRegs) {
+                System.out.print(r.toString() + " ");
             }
             System.out.println('\n');
         }
         currentFun = p.name;
         FunStructList.put(currentFun, new HashMap<>());
         writer.println("\n" + p.name + ":");
+        if (!p.name.equals("main")) {
+            writer.println("# Save fp,sp,rt");
+            print("sw", "$fp", "0($sp)", null);
+            print("sw", "$sp", "-4($sp)", null);
+            writer.println("# End of save fp,sp,rt");
+        }
         print("addi", "$sp", "$sp", String.valueOf(-argsOffset));
         argsOffset = 0;
         writer.println("move  " + Register.fp.toString() + ", " + Register.sp.toString());
@@ -159,9 +173,13 @@ public class CodeGenerator implements ASTVisitor<Register> {
 //            varDecl.accept(this);
 //        }
         if (!p.name.equals("print_s") && !p.name.equals("print_i") && !p.name.equals("print_c") && !p.name.equals("read_c") && !p.name.equals("read_i") && !p.name.equals("mcmalloc")) {
+            if (p.type == BaseType.VOID)
+                voidReturn = true;
             p.block.accept(this);
+            voidReturn = false;
             System.out.println("FunDecl" + p.name);
         }
+        System.out.println("At the end of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
         return null;
     }
 
@@ -251,7 +269,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
                     writer.println("jal " + fc.s);
                 } else {
                     int totalLocalSize = localVarSize.get(fc.s);
-                    System.out.println(totalLocalSize);
+                    System.out.println("totalLocalSize: " + totalLocalSize);
                     Register r = getRegister();
                     int offset = totalLocalSize - fc.Exprs.size() * 4;
                     for (Expr e : fc.Exprs) {
@@ -263,9 +281,11 @@ public class CodeGenerator implements ASTVisitor<Register> {
                     writer.println("jal " + fc.s);
                     freeRegister(r);
                 }
-                Register rr = getRegister();
-                print("add ", rr.toString(), "$zero", "$v0");
-                return rr;
+                if (fc.fd.type != BaseType.VOID) {
+                    Register rr = getRegister();
+                    print("add ", rr.toString(), "$zero", "$v0");
+                    return rr;
+                }
         }
         return null;
     }
@@ -369,22 +389,10 @@ public class CodeGenerator implements ASTVisitor<Register> {
         Register r = getRegister();
         Register offset = getRegister();
         int position = structOffset.get(((VarExpr) fae.e).vd.varName);
-//        position += structDefine.get(((VarExpr) fae.e)).get(fae.s);
         System.out.println("In struct position is " + position);
         print("li", offset.toString(), String.valueOf(position), null);
         print("add", r.toString(), "$fp", offset.toString());
         System.out.println(String.valueOf(structOffset.get(((VarExpr) fae.e).vd.varName)) + offset.toString());
-//        if (fae.e instanceof VarExpr) {
-//            String structTypeName;
-//
-//                structTypeName = ((VarExpr) fae.e).vd.varName;
-//
-//            HashMap<String, Integer> map = structDefine.get(structTypeName);
-//            int offset = map.get(fae.s);
-//            print("add", r.toString(), r.toString(), String.valueOf(offset));
-//        } else {
-//            System.out.println("Unexpected at visitFieldAccessExpr");
-//        }
         freeRegister(offset);
         if (AssignAddress) {
             return r;
@@ -509,24 +517,27 @@ public class CodeGenerator implements ASTVisitor<Register> {
 
     @Override
     public Register visitReturn(Return r) {
-        Register register = null;
-        try {
-            if (r.e != null) {
-                register = r.e.accept(this);
-                print("add  ", "$v0", "$zero", register.toString());
-            }
-        } catch (Exception ignored) {
+        if (r.e != null) {
+            Register register = r.e.accept(this);
+            print("add  ", "$v0", "$zero", register.toString());
+            freeRegister(register);
         }
+
         if (isMain) {
             if (isMainVoid) {
-                print("li", "$v0", "10", "\nsyscall");
+                writer.println("li $v0, 10\nsyscall");
             } else {
-                print("move", "$a0", "$v0", null);
-                print("li", "$v0", "17", "\nsyscall");
+                System.out.println("move $a0, $v0");
+                writer.println("li $v0, 17\nsyscall");
             }
         }
+        if(!isMain){
+            writer.println("# restore fp,sp,rt");
+            print("lw", "$fp", "0($sp)", null);
+            print("lw", "$sp", "-4($sp)", null);
+            writer.println("# restore of save fp,sp,rt");
+        }
         print("jr", Register.ra.toString(), null, null);
-        freeRegister(register);
         return null;
     }
 
