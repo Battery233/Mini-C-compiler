@@ -6,6 +6,7 @@ public class VarDecl implements ASTNode {
     public int size = 0;
     public int offset = 0;
     public boolean global = false;
+    public String strName;
 
     public VarDecl(Type type, String varName) {
         this.type = type;

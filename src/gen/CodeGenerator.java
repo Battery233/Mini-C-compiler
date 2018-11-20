@@ -5,9 +5,7 @@ import ast.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.util.EmptyStackException;
-import java.util.HashMap;
-import java.util.Stack;
+import java.util.*;
 
 public class CodeGenerator implements ASTVisitor<Register> {
 
@@ -52,6 +50,10 @@ public class CodeGenerator implements ASTVisitor<Register> {
 
     private void freeRegister(Register reg) {
         freeRegs.push(reg);
+        //Delete odd stack duplicate elements
+        final Set<Register> s = new HashSet<>(Collections.list(freeRegs.elements()));
+        freeRegs.clear();
+        freeRegs.addAll(s);
     }
 
 
@@ -160,18 +162,24 @@ public class CodeGenerator implements ASTVisitor<Register> {
         currentFun = p.name;
         FunStructList.put(currentFun, new HashMap<>());
         writer.println("\n" + p.name + ":");
-        if (!p.name.equals("main")) {
-            writer.println("# Save fp,sp,rt");
-            print("sw", "$fp", "0($sp)", null);
-            print("sw", "$sp", "-4($sp)", null);
-            writer.println("# End of save fp,sp,rt");
-        }
         print("addi", "$sp", "$sp", String.valueOf(-argsOffset));
         argsOffset = 0;
+        Register temp = getRegister();
+        writer.println("move  " + temp.toString() + ", " + Register.fp.toString());
         writer.println("move  " + Register.fp.toString() + ", " + Register.sp.toString());
 //        for (VarDecl varDecl : p.params) {
 //            varDecl.accept(this);
 //        }
+        if (!p.name.equals("main")) {
+            writer.println("# Save fp,sp,rt");
+            print("sw", temp.toString(), "0($fp)", null);
+            print("sw", "$fp", "-4($fp)", null);
+            print("sw", "$ra", "-8($sp)", null);
+            print("add", "$sp", "$sp", "-" + 12);
+
+            writer.println("# End of save fp,sp,rt");
+        }
+        freeRegister(temp);
         if (!p.name.equals("print_s") && !p.name.equals("print_i") && !p.name.equals("print_c") && !p.name.equals("read_c") && !p.name.equals("read_i") && !p.name.equals("mcmalloc")) {
             if (p.type == BaseType.VOID)
                 voidReturn = true;
@@ -193,7 +201,52 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitStrLiteral(StrLiteral sl) {
         stringTag++;
-        writer.println(".data\n" + "s" + stringTag + ": .asciiz \"" + sl.s + "\"\n.text");
+        StringBuilder sb = new StringBuilder();
+        char temp = '\0';
+        char[] chars = sl.s.toCharArray();
+        for (char c : chars) {
+            boolean flag = true;
+            if (c == '\t' || c == '\b' || c == '\n' || c == '\r' || c == '\f' || c == '\'' || c == '\"' || c == '\\' || c == '\0') {
+                switch (c) {
+                    case '\t':
+                        temp = 't';
+                        break;
+                    case '\b':
+                        temp = 'b';
+                        break;
+                    case '\n':
+                        temp = 'n';
+                        break;
+                    case '\r':
+                        temp = 'r';
+                        break;
+                    case '\f':
+                        temp = 'f';
+                        break;
+                    case '\'':
+                        temp = '\'';
+                        break;
+                    case '\"':
+                        temp = '"';
+                        break;
+                    case '\\':
+                        temp = '\\';
+                        break;
+                    case '\0':
+                        temp = '0';
+                        break;
+                }
+            } else {
+                temp = c;
+                flag = false;
+            }
+            if (flag) {
+                sb.append('\\');
+            }
+            sb.append(temp);
+        }
+        String s = sb.toString();
+        writer.println(".data\n" + "s" + stringTag + ": .asciiz \"" + s + "\"\n.text");
         Register r = getRegister();
         print("la", r.toString(), "s" + stringTag, null);
         return r;
@@ -202,7 +255,39 @@ public class CodeGenerator implements ASTVisitor<Register> {
     @Override
     public Register visitChrLiteral(ChrLiteral cl) {
         Register r = getRegister();
-        print("li", r.toString(), "'" + String.valueOf(cl.c) + "'", null);
+        String s = String.valueOf(cl.c);
+        if (cl.c == '\t' || cl.c == '\b' || cl.c == '\n' || cl.c == '\r' || cl.c == '\f' || cl.c == '\'' || cl.c == '\"' || cl.c == '\\' || cl.c == '\0') {
+            switch (cl.c) {
+                case '\t':
+                    s = "\\t";
+                    break;
+                case '\b':
+                    s = "\\b";
+                    break;
+                case '\n':
+                    s = "\\n";
+                    break;
+                case '\r':
+                    s = "\\r";
+                    break;
+                case '\f':
+                    s = "\\f";
+                    break;
+                case '\'':
+                    s = "\\'";
+                    break;
+                case '\"':
+                    s = "\\";
+                    break;
+                case '\\':
+                    s = "\\\\";
+                    break;
+                case '\0':
+                    s = "\\0";
+                    break;
+            }
+        }
+        print("li", r.toString(), "'" + s + "'", null);
         return r;
     }
 
@@ -392,15 +477,14 @@ public class CodeGenerator implements ASTVisitor<Register> {
         System.out.println("In struct position is " + position);
         print("li", offset.toString(), String.valueOf(position), null);
         print("add", r.toString(), "$fp", offset.toString());
-        System.out.println(String.valueOf(structOffset.get(((VarExpr) fae.e).vd.varName)) + offset.toString());
         freeRegister(offset);
-        if (AssignAddress) {
-            return r;
-        } else {
+        String name = ((VarExpr) fae.e).vd.strName;
+        int inStrOffset = structDefine.get(name).get(fae.s);
+        print("sub", r.toString(), r.toString(), String.valueOf(inStrOffset));
+        if (!AssignAddress) {
             print("lw", r.toString(), "(" + r.toString() + ")", null);
-            return r;
         }
-        //todo
+        return r;
     }
 
     @Override
@@ -531,11 +615,12 @@ public class CodeGenerator implements ASTVisitor<Register> {
                 writer.println("li $v0, 17\nsyscall");
             }
         }
-        if(!isMain){
+        if (!isMain) {
             writer.println("# restore fp,sp,rt");
-            print("lw", "$fp", "0($sp)", null);
-            print("lw", "$sp", "-4($sp)", null);
-            writer.println("# restore of save fp,sp,rt");
+            print("lw", "$sp", "-4($fp)", null);
+            print("lw", "$ra", "-8($fp)", null);
+            print("lw", "$fp", "0($fp)", null);
+            writer.println("# restore of saved fp,sp,rt");
         }
         print("jr", Register.ra.toString(), null, null);
         return null;
@@ -567,6 +652,8 @@ public class CodeGenerator implements ASTVisitor<Register> {
             size = 4;
         else if (vd.type instanceof StructType) {
             size = structSize.get(((StructType) vd.type).s);
+            vd.strName = ((StructType) vd.type).s;
+            System.out.println("visitVarDecl:StructType: " + ((StructType) vd.type).s);
         } else if (vd.type instanceof ArrayType) {
             if (((ArrayType) vd.type).t == BaseType.CHAR) {
                 size = ((ArrayType) vd.type).i;
