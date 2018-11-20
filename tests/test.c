@@ -119,13 +119,10 @@
 //
 //    return 0;
 //}
-void foo(){
-}
 
-int main(){
-    int i;
-    i = 1;
-    foo();
-    print_i(i);
-    return 0;
+void main(){
+    char x[2];
+     x[0] = 'y';
+     x[1]= 'x';
+    print_s((char*)x);
 }

@@ -177,7 +177,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             print("sw", "$ra", "-8($sp)", null);
             print("add", "$sp", "$sp", "-" + 12);
             writer.println("# End of save fp,sp,rt");
-        }else{
+        } else {
             print("add", "$sp", "$sp", "-" + 12);
         }
         freeRegister(temp);
@@ -584,7 +584,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             if (a.e1.type == BaseType.CHAR)
                 print("sb", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 6");
             else
-                print("sw", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 6");
+                print("sw", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 7");
             freeRegister(address);
             AssignAddress = false;
         } else if (a.e1 instanceof FieldAccessExpr) {
@@ -680,7 +680,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             //localVar
             localValOffset = localValOffset + size;
             vd.offset = localValOffset;
-            System.out.println("local var " + vd.varName + " defined in function+"+currentFun+". Offset = " + (vd.offset - size) + " size = " + size);
+            System.out.println("local var " + vd.varName + " defined in function+" + currentFun + ". Offset = " + (vd.offset - size) + " size = " + size);
             print("add", "$sp", "$sp", "-" + size);
             vd.global = false;
         }

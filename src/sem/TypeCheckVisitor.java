@@ -6,6 +6,21 @@ import java.util.List;
 
 public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
 
+    /*
+    *
+    *   TypeCheck will be performed but errors will not be reported.
+    *   All error() functions are replaced will foo()
+    *
+    * */
+
+    private void foo(String s) {
+        //to replace error(String s);
+    }
+
+    private void foo() {
+        //to replace error();
+    }
+
     @Override
     public Type visitBaseType(BaseType bt) {
         return null;
@@ -55,13 +70,13 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
                 Type t = st.accept(this);
                 if (st instanceof Return) {
                     if (t != p.type) {
-                        error("return type error, expected " + p.type + " found" + t);
+                        foo("return type error, expected " + p.type + " found" + t);
                     }
                 }
             }
         } else {
             if (p.type != BaseType.VOID) {
-                error("no return stmt found in funDecl!");
+                foo("no return stmt found in funDecl!");
             }
         }
 
@@ -70,37 +85,36 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
 
     @Override
     public Type visitProgram(Program p) {
-//        try {
-//            if (p.structTypeDecls.size() != 0) {
-//                for (StructTypeDecl std : p.structTypeDecls) {
-//                    std.accept(this);
-//                }
-//            }
-//
-//            if (p.varDecls.size() != 0) {
-//                for (VarDecl vd : p.varDecls) {
-//                    vd.accept(this);
-//                }
-//            }
-//
-//            if (p.funDecls.size() != 0) {
-//                for (FunDecl fd : p.funDecls) {
-//                    fd.accept(this);
-//                }
-//            }
-//            return null;
-//        } catch (Exception e) {
-//            error("Exception found in visitProgram: " + e.toString());
-////            e.printStackTrace();
-//            return null;
-//        }
-        return null;
+        try {
+            if (p.structTypeDecls.size() != 0) {
+                for (StructTypeDecl std : p.structTypeDecls) {
+                    std.accept(this);
+                }
+            }
+
+            if (p.varDecls.size() != 0) {
+                for (VarDecl vd : p.varDecls) {
+                    vd.accept(this);
+                }
+            }
+
+            if (p.funDecls.size() != 0) {
+                for (FunDecl fd : p.funDecls) {
+                    fd.accept(this);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            foo("Exception found in visitProgram: " + e.toString());
+//            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override
     public Type visitVarDecl(VarDecl vd) {
         if (vd.type == BaseType.VOID)
-            error("Cannot declare void type var!");
+            foo("Cannot declare void type var!");
         return null;
     }
 
@@ -114,7 +128,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
             v.type = v.vd.type;
             return v.vd.type;
         } catch (Exception e) {
-            error("error in visitVarExpr!");
+            foo("error in visitVarExpr!");
         }
         return null;
     }
@@ -154,7 +168,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
         List<Expr> args = fc.Exprs;
         List<VarDecl> params = fc.fd.params;
         if (args.size() != params.size()) {
-            error("wrong args size!");
+            foo("wrong args size!");
             return null;
         }
         for (int i = 0; i < params.size(); i++) {
@@ -163,10 +177,10 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
             if (!t1.equals(t2)) {
                 if (t1 instanceof PointerType && t2 instanceof PointerType) {
                     if (((PointerType) t1).t != ((PointerType) t2).t) {
-                        error("error: pointer not match!");
+                        foo("error: pointer not match!");
                     }
                 } else
-                    error("params match failed!");
+                    foo("params match failed!");
             }
         }
         fc.type = fc.fd.type;
@@ -181,18 +195,18 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
             if (lhsT == BaseType.INT && rhsT == BaseType.INT)
                 return BaseType.INT;
             else {
-                error("Type should be INT in BinOP!");
+                foo("Type should be INT in BinOP!");
                 return null;
             }
         } else {
             if (lhsT instanceof PointerType && rhsT instanceof PointerType) {
                 if (((PointerType) lhsT).t != ((PointerType) rhsT).t) {
-                    error("error: pointer not match!");
+                    foo("error: pointer not match!");
                 }
             } else if (lhsT instanceof StructType || lhsT instanceof ArrayType || lhsT == BaseType.VOID) {
-                error("wrong lhs type in BinOp!");
+                foo("wrong lhs type in BinOp!");
             } else if (lhsT != rhsT) {
-                error("left and right not match in OP!");
+                foo("left and right not match in OP!");
             }
         }
         bo.type = BaseType.INT;
@@ -211,12 +225,12 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
                     aae.type = ((ArrayType) t).t;
                 }
             } else {
-                error("ArrayAccess type error!");
+                foo("ArrayAccess type error!");
                 return null;
             }
             return aae.type;
         } catch (Exception e) {
-            error("Exception found in ArrayAccessExpr!");
+            foo("Exception found in ArrayAccessExpr!");
         }
         return null;
     }
@@ -225,7 +239,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
     public Type visitFieldAccessExpr(FieldAccessExpr fae) {
         Type t = fae.e.accept(this);
         if (!(t instanceof StructType)) {
-            error("Field access must be for struct!");
+            foo("Field access must be for struct!");
         } else {
             if (fae.e instanceof VarExpr) {
                 if (((VarExpr) fae.e).std != null) {
@@ -239,7 +253,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
                 }
             }
         }
-        error("field access error");
+        foo("field access error");
         return null;
     }
 
@@ -250,7 +264,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
             vae.type = ((PointerType) t).t;
             return ((PointerType) t).t;
         } else {
-            error("pointer error");
+            foo("pointer error");
         }
         return null;
     }
@@ -274,7 +288,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
             te.type = te.t;
             return te.t;
         } else {
-            error("type cast error!");
+            foo("type cast error!");
             return null;
         }
     }
@@ -290,7 +304,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
         Type t = w.e.accept(this);
         w.s.accept(this);
         if (t != BaseType.INT)
-            error("While condition should be int!");
+            foo("While condition should be int!");
         return null;
     }
 
@@ -301,7 +315,7 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
         if (i.s2 != null)
             i.s2.accept(this);
         if (t != BaseType.INT)
-            error("If condition should be int!");
+            foo("If condition should be int!");
         return null;
     }
 
@@ -310,17 +324,17 @@ public class TypeCheckVisitor extends BaseSemanticVisitor<Type> {
         Type t1 = a.e1.accept(this);
         Type t2 = a.e2.accept(this);
         if (t1 == BaseType.VOID || t1 instanceof ArrayType) {
-            error("Assign error! void or array");
+            foo("Assign error! void or array");
             return null;
         } else {
             if (a.e1 instanceof VarExpr || a.e1 instanceof FieldAccessExpr || a.e1 instanceof ArrayAccessExpr || a.e1 instanceof ValueAtExpr) {
                 if (t1 != t2) {
-                    error("Assign type not match!");
+                    foo("Assign type not match!");
                 } else {
                     return t1;
                 }
             } else {
-                error("wrong left type");
+                foo("wrong left type");
             }
         }
         return null;
