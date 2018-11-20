@@ -148,49 +148,58 @@ LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
 ## 3. Implement a Simple Dead Code Elimination Pass
 
-TBA
+Add a new method to your instruction counting pass to eliminate dead code. In the C program below, 'd' is dead because it is not used after it's assignment in the program. The assignment to 'c' is dead 
+because it's only use is in the assignment to 'd' which is dead.
+
+```
+int foo() {
+  int a = 7;
+  int b = a * 2;
+  int c = b - a;   // dead 
+  int d = c / a;   // dead
+  return b;
+}
+```
+
+LLVM has a method to detect dead code and a method to remove instructions that you can use in your pass.
+
+```
+isInstructionTriviallyDead()
+eraseFromParent()
+```
+
+You will use the LLVM iterators we discussed in class to find the dead instructions. It is illegal to remove an instruction while you are iterating over them. You need to first identify the instructions that are dead and then in a second loop remove them. Use the LLVM SmallVector data structure to store the dead instructions you find while iterating and a second loop to remove them.
+
+```
+SmallVector<Instruction*, 64> Worklist;
+```
+
+You need to run LLVM's 'mem2reg' pass before your DCE pass to convert the bitcode into a form that will work with your optimization. Without running 'mem2reg' all instructions will store their destinations operands to the stack and load their source operands from the stack. The memory instructions will block the ability for you to discover dead code. When you run 'mem2reg', you are converting the stack allocated code in non-SSA form, into SSA form with virtual registers.
+
+Use the 'opt' tool to run 'mem2reg' before your DCE pass. Give your pass a command line option called 'skeletonpass'.
+
+```
+~/ug3-ct/build/bin/clang -S -emit-llvm -Xclang -disable-O0-optnone dead.c
+~/ug3-ct/build/bin/opt -load skeleton/libSkeletonPass.so -mem2reg -skeletonpass dead.ll
+``` 
 
 ## 4. Implement Iterative Liveness Analysis
 
-TBA
+In this assignment, you will implement an iterative data-flow analysis framework in LLVM for a backward data-flow
+analysis (Liveness). A liveness implementation is already available in LLVM, but it is not of the iterative flavor. You
+will then use your framework to implement dead code elimination. Any clarifications and revisions to the assignment
+will be posted on Piazza.
+
+Detailed description is available [here.](ug3project.pdf)
+
 
 ## 5. Submitting Your Project
 
 As with parts 1-3, part 4 will be marked with a set of automated scripts, but we won't be running scripts every day like wiht previous tests. In order for the scripts to run correctly, your passes will have to be placed and named in a way that they expect. 
 
-### Structuring your repository for marking
 
-Passes should be stored in a folder `part-4/passes`. The folder should *only* contain passes, and nothing else, otherwise the scripts will fail. Your passes folder should contain two passes, named: 
-
-- `llvm-pass-simple-dce` (part 3, a Simple Dead Code Elimination Pass)
-- `llvm-pass-my-dce` (part 4, an Iteratrive Liveness Analysis pass)
-
-The sources for each pass should be in a folder named `skeleton`, and the pass (when compiled) should be a shared object called `libSkeletonPass.so`. If you cloned the skeleton pass repository (i.e. https://github.com/sampsyo/llvm-pass-skeleton.git), and did not change the CMakelists or the name of the source (`Skeleton.cpp`) then the pass should be configured correctly. 
-
-In other words, the `part-4/passes` folder should be structured as follows: 
-
-```
-part-4
-`-- passes
-    |-- llvm-pass-my-dce
-    |   |-- CMakeLists.txt
-    |   `-- skeleton
-    |       |-- CMakeLists.txt
-    |       `-- Skeleton.cpp
-    `-- llvm-pass-simple-dce
-        |-- CMakeLists.txt
-        `-- skeleton
-            |-- CMakeLists.txt
-            `-- Skeleton.cpp
-```
-
-(you should get a similar output if you run `tree --charset=ascii` in your `part-4` folder)
-
-It is generally good engineering practice to exclude build directories from your repository, so your passes should give a similar output to the above structure if you run `tree --charset=ascii` in your `part-4` folder.
 
 ### Naming your pass
-
-When registering the pass with LLVM, it should be called `skeletonpass`. Otherwise, our scripts will not be able to call it. In other words, your pass registration code (in C++) should look like (SimpleDCE used as an example): 
 
 ```
 char SimpleDCE::ID = 0;
