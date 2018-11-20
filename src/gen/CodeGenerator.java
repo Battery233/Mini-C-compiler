@@ -176,8 +176,9 @@ public class CodeGenerator implements ASTVisitor<Register> {
             print("sw", "$fp", "-4($fp)", null);
             print("sw", "$ra", "-8($sp)", null);
             print("add", "$sp", "$sp", "-" + 12);
-
             writer.println("# End of save fp,sp,rt");
+        }else{
+            print("add", "$sp", "$sp", "-" + 12);
         }
         freeRegister(temp);
         if (!p.name.equals("print_s") && !p.name.equals("print_i") && !p.name.equals("print_c") && !p.name.equals("read_c") && !p.name.equals("read_i") && !p.name.equals("mcmalloc")) {
@@ -679,7 +680,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             //localVar
             localValOffset = localValOffset + size;
             vd.offset = localValOffset;
-            System.out.println("local var " + vd.varName + " defined. Offset = " + (vd.offset - size) + " size = " + size);
+            System.out.println("local var " + vd.varName + " defined in function+"+currentFun+". Offset = " + (vd.offset - size) + " size = " + size);
             print("add", "$sp", "$sp", "-" + size);
             vd.global = false;
         }

@@ -14,6 +14,7 @@ main:
 addi $sp, $sp, 0
 move  $t9, $fp
 move  $fp, $sp
+add $sp, $sp, -12
 ###visit block###
 add $sp, $sp, -4
 add $sp, $sp, -4
