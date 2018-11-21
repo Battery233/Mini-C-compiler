@@ -25,16 +25,18 @@ public class CodeGenerator implements ASTVisitor<Register> {
     private HashMap<String, HashMap<String, Integer>> FunStructList = new HashMap<>();
     private HashMap<String, Integer> structOffset = new HashMap<>();
     private HashMap<String, Integer> localVarSize = new HashMap<>();
+    private HashMap<String, Integer> argsOffset = new HashMap<>();
     private int localValOffset = 0;
     private boolean AssignAddress = false;
     private boolean isMain = false;
     private boolean isMainVoid = false;
     private String currentFun = "global";
-    private int argsOffset = 0;
     private boolean voidReturn = false;
+    private boolean debugInfo = false;      // boolean for allow if(debugInfo)System.out.println()
 
     public CodeGenerator() {
         freeRegs.addAll(Register.tmpRegs);
+//        argsOffset.put("main", 0);
     }
 
     private class RegisterAllocationError extends Error {
@@ -94,26 +96,28 @@ public class CodeGenerator implements ASTVisitor<Register> {
 //                vd.accept(this);
                 if (!(vd.type instanceof StructType) && !(vd.type instanceof ArrayType)) {
                     offset.put(vd.varName, st.size);
-                    System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
+                    if (debugInfo) System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
                     st.size += 4;
                 } else if (vd.type instanceof ArrayType) {
                     if (((ArrayType) vd.type).t == BaseType.CHAR) {
                         int size = ((ArrayType) vd.type).i;
                         offset.put(vd.varName, st.size);
-                        System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
+                        if (debugInfo)
+                            System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
                         if (size % 4 != 0) {
                             st.size += 4 * (size / 4 + 1);
                         }
                     } else {
                         offset.put(vd.varName, st.size);
-                        System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
+                        if (debugInfo)
+                            System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
                         st.size += 4 * ((ArrayType) vd.type).i;
                     }
                 } else {
                     offset.put(vd.varName, st.size);
-                    System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
+                    if (debugInfo) System.out.println("In " + st.st.s + ", " + vd.varName + " at position " + st.size);
                     st.size += structSize.get(((StructType) vd.type).s);
-                    System.out.println("Found struct in struct!");
+                    if (debugInfo) System.out.println("Found struct in struct!");
                 }
             }
         }
@@ -152,18 +156,25 @@ public class CodeGenerator implements ASTVisitor<Register> {
             if (p.type == BaseType.VOID)
                 isMainVoid = true;
         }
-        System.out.println("At the beginning of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
+        if (debugInfo)
+            System.out.println("At the beginning of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
         if (freeRegs.size() != 18) {
             for (Register r : freeRegs) {
-                System.out.print(r.toString() + " ");
+                if (debugInfo) System.out.print(r.toString() + " ");
             }
-            System.out.println('\n');
+            if (debugInfo) System.out.println('\n');
         }
         currentFun = p.name;
         FunStructList.put(currentFun, new HashMap<>());
         writer.println("\n" + p.name + ":");
-        print("addi", "$sp", "$sp", String.valueOf(-argsOffset));
-        argsOffset = 0;
+        if (debugInfo) System.out.println(p.name + argsOffset.get(p.name) + ":argsOffset");
+        int intTemp = 0;
+        try {
+            intTemp = -argsOffset.get(p.name);
+        } catch (Exception ignored) {
+        }
+
+        print("addi", "$sp", "$sp", String.valueOf(intTemp));
         Register temp = getRegister();
         writer.println("move  " + temp.toString() + ", " + Register.fp.toString());
         writer.println("move  " + Register.fp.toString() + ", " + Register.sp.toString());
@@ -186,9 +197,10 @@ public class CodeGenerator implements ASTVisitor<Register> {
                 voidReturn = true;
             p.block.accept(this);
             voidReturn = false;
-            System.out.println("FunDecl" + p.name);
+            if (debugInfo) System.out.println("FunDecl" + p.name);
         }
-        System.out.println("At the end of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
+        if (debugInfo)
+            System.out.println("At the end of funDecl of " + p.name + " freeregs.size() = " + freeRegs.size());
         return null;
     }
 
@@ -355,15 +367,21 @@ public class CodeGenerator implements ASTVisitor<Register> {
                     writer.println("jal " + fc.s);
                 } else {
                     int totalLocalSize = localVarSize.get(fc.s);
-                    System.out.println("totalLocalSize: " + totalLocalSize);
+                    if (debugInfo) System.out.println(fc.s + "totalLocalSize: " + totalLocalSize);
                     Register r = getRegister();
                     int offset = totalLocalSize - fc.Exprs.size() * 4;
+                    if (debugInfo)
+                        System.out.println(fc.s + " Tag offset" + offset + "fc.Exprs.size()" + fc.Exprs.size() + "totalLocalSize" + totalLocalSize);
                     for (Expr e : fc.Exprs) {
                         r = e.accept(this);
-                        print("sw", r.toString(), -offset + "($sp)", null);
+                        if (e.type != BaseType.CHAR)
+                            print("sw", r.toString(), -offset + "($sp)", null);
+                        else
+                            print("sb", r.toString(), -offset + "($sp)", null);
                         offset += 4;
-                        argsOffset = offset;
                     }
+                    argsOffset.put(fc.s, offset);
+                    if (debugInfo) System.out.println(fc.s + " Tag argsOffset" + argsOffset);
                     writer.println("jal " + fc.s);
                     freeRegister(r);
                 }
@@ -380,7 +398,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
     public Register visitBinOp(BinOp bo) {
         Register lhs = bo.Exprs1.accept(this);
         Register rhs = bo.Exprs2.accept(this);
-        System.out.println("BinOp registers:" + lhs.toString() + '\t' + rhs.toString());
+        if (debugInfo) System.out.println("BinOp registers:" + lhs.toString() + '\t' + rhs.toString());
         Register r = getRegister();
         switch (bo.op) {
             case ADD:
@@ -470,12 +488,12 @@ public class CodeGenerator implements ASTVisitor<Register> {
 
     @Override
     public Register visitFieldAccessExpr(FieldAccessExpr fae) {
-        System.out.println("Field access Expr " + fae.s);
+        if (debugInfo) System.out.println("Field access Expr " + fae.s);
         writer.println("# Field access Expr" + fae.s);
         Register r = getRegister();
         Register offset = getRegister();
         int position = structOffset.get(((VarExpr) fae.e).vd.varName);
-        System.out.println("In struct position is " + position);
+        if (debugInfo) System.out.println("In struct position is " + position);
         print("li", offset.toString(), String.valueOf(position), null);
         print("add", r.toString(), "$fp", offset.toString());
         freeRegister(offset);
@@ -558,7 +576,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
         if (a.e1 instanceof VarExpr) {
             VarDecl vd = ((VarExpr) a.e1).vd;
             if (vd.global) {
-                System.out.println("assign a global value " + vd.varName);
+                if (debugInfo) System.out.println("assign a global value " + vd.varName);
                 Register address = getRegister();
                 print("la", address.toString(), vd.varName, null);
                 if (vd.type != BaseType.CHAR)
@@ -573,13 +591,13 @@ public class CodeGenerator implements ASTVisitor<Register> {
                     print("sb", r.toString(), (-vd.offset + 4) + "($fp)", "# visitAssign Tag 4");
             }
         } else if (a.e1 instanceof ValueAtExpr) {
-            System.out.println("assign a ValueAtExpr");
+            if (debugInfo) System.out.println("assign a ValueAtExpr");
             Register address = ((ValueAtExpr) a.e1).e.accept(this);
             print("sw", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 5");
             freeRegister(address);
         } else if (a.e1 instanceof ArrayAccessExpr) {
             AssignAddress = true;
-            System.out.println("assign an ArrayAccessExpr");
+            if (debugInfo) System.out.println("assign an ArrayAccessExpr");
             Register address = a.e1.accept(this);
             if (a.e1.type == BaseType.CHAR)
                 print("sb", r.toString(), "(" + address.toString() + ")", "# visitAssign Tag 6");
@@ -589,7 +607,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             AssignAddress = false;
         } else if (a.e1 instanceof FieldAccessExpr) {
             AssignAddress = true;
-            System.out.println("assign a FieldAccessExpr");
+            if (debugInfo) System.out.println("assign a FieldAccessExpr");
             writer.println("# assign a FieldAccessExpr");
             Register address = a.e1.accept(this);
             writer.println("sw  " + r.toString() + ", (" + address.toString() + ")");
@@ -612,7 +630,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             if (isMainVoid) {
                 writer.println("li $v0, 10\nsyscall");
             } else {
-                System.out.println("move $a0, $v0");
+                if (debugInfo) System.out.println("move $a0, $v0");
                 writer.println("li $v0, 17\nsyscall");
             }
         }
@@ -654,7 +672,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
         else if (vd.type instanceof StructType) {
             size = structSize.get(((StructType) vd.type).s);
             vd.strName = ((StructType) vd.type).s;
-            System.out.println("visitVarDecl:StructType: " + ((StructType) vd.type).s);
+            if (debugInfo) System.out.println("visitVarDecl:StructType: " + ((StructType) vd.type).s);
         } else if (vd.type instanceof ArrayType) {
             if (((ArrayType) vd.type).t == BaseType.CHAR) {
                 size = ((ArrayType) vd.type).i;
@@ -665,7 +683,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
                 size = 4 * ((ArrayType) vd.type).i;
             }
         } else {
-            System.out.println("visitVarDecl: unknown type " + vd.type.toString());
+            if (debugInfo) System.out.println("visitVarDecl: unknown type " + vd.type.toString());
         }
 
         if (global) {
@@ -674,19 +692,21 @@ public class CodeGenerator implements ASTVisitor<Register> {
         } else {
             if (vd.type instanceof StructType) {
                 FunStructList.get(currentFun).put(vd.varName, localValOffset);
-                System.out.println("At " + currentFun + " defined Struct " + vd.varName + " at offset " + localValOffset);
+                if (debugInfo)
+                    System.out.println("At " + currentFun + " defined Struct " + vd.varName + " at offset " + localValOffset);
                 structOffset.put(vd.varName, localValOffset);
             }
             //localVar
             localValOffset = localValOffset + size;
             vd.offset = localValOffset;
-            System.out.println("local var " + vd.varName + " defined in function+" + currentFun + ". Offset = " + (vd.offset - size) + " size = " + size);
+            if (debugInfo)
+                System.out.println("local var " + vd.varName + " defined in function+" + currentFun + ". Offset = " + (vd.offset - size) + " size = " + size);
             print("add", "$sp", "$sp", "-" + size);
             vd.global = false;
         }
         vd.size = size;
         localVarSize.put(currentFun, localValOffset);
-//        System.out.println("Local var size of "+ currentFun+": "+ localValOffset);
+//        if(debugInfo)System.out.println("Local var size of "+ currentFun+": "+ localValOffset);
         return null;
     }
 
@@ -717,7 +737,7 @@ public class CodeGenerator implements ASTVisitor<Register> {
             writer.println("la " + a.toString() + "," + v.name);
             r = a;
         } else {
-            System.out.println("Undefined Var!");
+            if (debugInfo) System.out.println("Undefined Var!");
         }
         freeRegister(a);
         return r;

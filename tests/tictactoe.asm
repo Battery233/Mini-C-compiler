@@ -1041,11 +1041,11 @@ jal get_mark
 add  $t7, $zero, $v0
 sb $t7, -28($fp), # visitAssign Tag 4
 lb $t8, -12($fp)
-sw $t8, -16($sp)
+sb $t8, -16($sp)
 lw $s2, -16($fp)
 sw $s2, -20($sp)
 lb $t4, -28($fp)
-sw $t4, -24($sp)
+sb $t4, -24($sp)
 jal set
 add  $t4, $zero, $v0
 sw $t4, -24($fp), # visitAssign Tag 3
@@ -1105,7 +1105,7 @@ jr $ra
 ###visit block end###
 
 won:
-addi $sp, $sp, -28
+addi $sp, $sp, 0
 move  $s1, $fp
 move  $fp, $sp
 # Save fp,sp,rt
@@ -1390,6 +1390,7 @@ main:
 addi $sp, $sp, 0
 move  $s1, $fp
 move  $fp, $sp
+add $sp, $sp, -12
 ###visit block###
 add $sp, $sp, -4
 add $sp, $sp, -4
@@ -1420,7 +1421,7 @@ add  $s7, $zero, $v0
 sb $s7, -20($fp), # visitAssign Tag 4
 jal printGame
 lb $s3, -20($fp)
-sw $s3, -16($sp)
+sb $s3, -16($sp)
 jal won
 add  $s3, $zero, $v0
 beq $s3, $zero, ifTag86
