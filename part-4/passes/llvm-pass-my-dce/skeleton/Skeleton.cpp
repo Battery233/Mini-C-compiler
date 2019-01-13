@@ -9,13 +9,9 @@ using namespace std;
 namespace {
 struct MyDCE : public FunctionPass {
     static char ID;
-    MyDCE()
-        : FunctionPass(ID)
-    {
-    }
+    MyDCE() : FunctionPass(ID){}
 
-    virtual bool runOnFunction(Function& F)
-    {
+    virtual bool runOnFunction(Function& F) {
         for (Function::iterator bb = F.begin(), e = F.end(); bb != e; ++bb) {
             for (BasicBlock::iterator i = bb->begin(), e = bb->end(); i != e; ++i) {
             }
@@ -29,8 +25,7 @@ struct MyDCE : public FunctionPass {
 char MyDCE::ID = 0;
 
 static void registerSkeletonPass(const PassManagerBuilder&,
-    legacy::PassManagerBase& PM)
-{
+    legacy::PassManagerBase& PM) {
     PM.add(new MyDCE());
 }
 

@@ -10,16 +10,21 @@ using namespace std;
 
 namespace {
 struct SimpleDCE: public FunctionPass {
+
     static char ID;
     SimpleDCE(): FunctionPass(ID) {}
+
     SmallVector<Instruction*, 64> Worklist;
-    bool flag = true;
-    int counter = 0;
+    bool flag;
+    int counter;
+
     virtual bool runOnFunction(Function & F) {
+
         errs() << "Function " << F.getName() << "\n";
+        counter = 0;
+        flag = true;
 
         while(flag) {
-
             for (Function::iterator bb = F.begin(), e = F.end(); bb != e; ++bb) {
                 for (BasicBlock::iterator i = bb->begin(), e = bb->end(); i != e; ++i) {
                     Instruction *address = &*i;
@@ -28,8 +33,10 @@ struct SimpleDCE: public FunctionPass {
                     }
                 }
             }
+
             if(0==Worklist.size())
                 flag = false;
+
             while(0!=Worklist.size()) {
                 Instruction *i = Worklist.back();
                 Worklist.pop_back();
@@ -37,6 +44,7 @@ struct SimpleDCE: public FunctionPass {
                 counter++;
             }
         }
+
         errs() << "Dead code deleted: " << counter << "\n";        
         return false;
     }
