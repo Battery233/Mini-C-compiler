@@ -38,9 +38,8 @@ struct SimpleDCE: public FunctionPass {
                 flag = false;
 
             while(0!=Worklist.size()) {
-                Instruction *i = Worklist.back();
+                Worklist.back()-> eraseFromParent();
                 Worklist.pop_back();
-                i -> eraseFromParent();
                 counter++;
             }
         }
